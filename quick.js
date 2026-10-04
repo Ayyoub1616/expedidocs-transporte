@@ -38,6 +38,8 @@ const qForm=document.querySelector('#quickForm');
 const opt=(val,label)=>'<option value="'+esc(val)+'">'+esc(label)+'</option>';
 function seedDefaults(){
  let changed=false;
+ if(!db.carriers.some(c=>String(c.tax||'').toUpperCase()==='B50655216'||/monje/i.test(c.name||''))){db.carriers.push({id:'carrier-monje',name:'MONJE',tax:'B50655216'});changed=true;}
+ for(const c of db.carriers){if((String(c.tax||'').toUpperCase()==='B50655216'||/monje/i.test(c.name||''))&&c.name!=='MONJE'){c.name='MONJE';changed=true;}}
  if(!db.destinations.length){db.destinations=DESTINATIONS.map((x,i)=>({id:'dest-'+(i+1),code:'D-'+(i+1),name:x[0],address:x[1]}));changed=true;}
  if(!db.tractors?.length){db.tractors=PLATES_T;changed=true;}
  if(!db.trailers?.length){db.trailers=PLATES_R;changed=true;}
@@ -75,7 +77,7 @@ for(const cat of ['tractor','trailer']){
 }
 document.querySelector('#catalogos').addEventListener('click',e=>{let btn=e.target.closest('[data-plate-cat]');if(!btn)return;let k=btn.dataset.plateCat,v=btn.dataset.plate;if(!confirm('¿Borrar '+v+' del catálogo? No se modificarán los documentos anteriores.'))return;db[k]=db[k].filter(x=>x!==v);save();renderQuick()});
 const originalRenderCatalogs=renderCatalogs;
-renderCatalogs=function(){originalRenderCatalogs();seedDefaults();renderQuick()};
+renderCatalogs=function(){seedDefaults();originalRenderCatalogs();renderQuick()};
 const originalEdit=edit;
 edit=function(id){
  const s=db.shipments.find(x=>x.id===id);if(!s)return;
@@ -100,7 +102,7 @@ qForm.addEventListener('submit',e=>{
  const d={...(old||{}),...FIXED_SENDER,...Object.fromEntries(new FormData(qForm)),date:qForm.elements.date.value,
  destinationId:dest.id,destination:dest.name,address:dest.address,consignee:dest.name,
  tractor:tr,trailer:tl,driverCatalogId:driver.id,driver:driver.name,driverId:driver.driverId||'',phone:driver.phone||'',
- carrier:'OPERADOR LOGÍSTICO MONJE, S.L.U.',carrierTax:'B50655216',origin:'Zaragoza',dispatcher:'',pallets:Number(qForm.elements.pallets.value),
+ carrier:'MONJE',carrierTax:'B50655216',origin:'Zaragoza',dispatcher:'',pallets:Number(qForm.elements.pallets.value),
  packages:0,bars:0,packaging:'Palets de madera',goods:'PALETS MADERA ENVIADOS',mode:'Normal',weight:qForm.elements.weight.value===''?'':Number(qForm.elements.weight.value),
  unloadDate:qForm.elements.date.value,model:[qForm.elements.mocaco.value,qForm.elements.mocaco2.value].filter(Boolean).join('\n'),
  id:old?.id||uuid(),ref:old?.ref||('EXP-'+Date.now().toString(36).toUpperCase()),

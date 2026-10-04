@@ -9,16 +9,16 @@ const msg=(v)=>{const t=$('#toast');t.textContent=v;t.style.display='block';clea
 const API_URL='https://shrmlnantusaaeqetlkk.supabase.co';
 const API_KEY='sb_publishable_nedhbCcWQBE8Nah8AW72FA_3sF3wFsP';
 const cloud=window.supabase?.createClient(API_URL,API_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
-let activeUser=null,writeQueue=Promise.resolve();
+let activeUser=null,writeQueue=Promise.resolve(),isAdmin=false,dataOwnerId=null,reportRequest=0;
 const cloudStatus=v=>{$('#cloudStatus').textContent=v};
-const save=()=>{if(!activeUser||!cloud){msg('Sin sesión: no se puede guardar');return false}const snapshot=JSON.parse(JSON.stringify(db));cloudStatus('Guardando en nube...');writeQueue=writeQueue.catch(()=>{}).then(async()=>{let {error}=await cloud.from('expedidocs_data').upsert({user_id:activeUser.id,payload:snapshot,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(error){cloudStatus('Error de guardado');msg('No se ha podido guardar en la nube. Exporta una copia y revisa la conexión.');throw error}cloudStatus('✓ Guardado en nube')});return true};
-async function authReady(session){activeUser=session?.user||null;$('#privateApp').hidden=!activeUser;$('#authGate').hidden=!!activeUser;if(!activeUser){db=clean();return}cloudStatus('Cargando información...');const {data,error}=await cloud.from('expedidocs_data').select('payload').eq('user_id',activeUser.id).maybeSingle();if(error){cloudStatus('Error al recuperar datos');msg('No se pudo cargar la base privada');$('#privateApp').hidden=true;$('#authGate').hidden=false;activeUser=null;return}const p=data?.payload;if(p&&Array.isArray(p.shipments)&&Array.isArray(p.destinations)&&Array.isArray(p.carriers)){db={version:1,shipments:p.shipments,destinations:p.destinations,carriers:p.carriers,drivers:Array.isArray(p.drivers)?p.drivers:[],tractors:Array.isArray(p.tractors)?p.tractors:[],trailers:Array.isArray(p.trailers)?p.trailers:[]}}else db=clean();renderHome();renderCatalogs();renderHistory();cloudStatus('✓ Sesión privada conectada');}
+const save=()=>{if(!activeUser||!cloud){msg('Sin sesión: no se puede guardar');return false}const snapshot=JSON.parse(JSON.stringify(db)),owner=dataOwnerId||activeUser.id;cloudStatus('Guardando en nube...');writeQueue=writeQueue.catch(()=>{}).then(async()=>{let {error}=await cloud.from('expedidocs_data').upsert({user_id:owner,payload:snapshot,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(error){cloudStatus('Error de guardado');msg('No se ha podido guardar en la nube. Exporta una copia y revisa la conexión.');throw error}cloudStatus('✓ Guardado en nube')});return true};
+async function authReady(session){activeUser=session?.user||null;isAdmin=false;dataOwnerId=activeUser?.id||null;applyAdminAccess();if(activeUser){const role=await cloud.rpc('expedidocs_is_admin');isAdmin=!role.error&&role.data===true;applyAdminAccess()}$('#privateApp').hidden=!activeUser;$('#authGate').hidden=!!activeUser;if(!activeUser){db=clean();return}cloudStatus('Cargando información...');const {data,error}=await cloud.from('expedidocs_data').select('payload').eq('user_id',activeUser.id).maybeSingle();if(error){cloudStatus('Error al recuperar datos');msg('No se pudo cargar la base privada');$('#privateApp').hidden=true;$('#authGate').hidden=false;activeUser=null;return}const p=data?.payload;if(p&&Array.isArray(p.shipments)&&Array.isArray(p.destinations)&&Array.isArray(p.carriers)){db={version:1,shipments:p.shipments,destinations:p.destinations,carriers:p.carriers,drivers:Array.isArray(p.drivers)?p.drivers:[],tractors:Array.isArray(p.tractors)?p.tractors:[],trailers:Array.isArray(p.trailers)?p.trailers:[]}}else db=clean();renderHome();renderCatalogs();renderHistory();cloudStatus('✓ Sesión privada conectada');if(isAdmin)await loadAdminAccounts();}
 $('#authForm').addEventListener('submit',async e=>{e.preventDefault();if(!cloud)return $('#authStatus').textContent='No se ha podido cargar la conexión segura';$('#authStatus').textContent='Comprobando acceso...';const {data,error}=await cloud.auth.signInWithPassword({email:$('#authEmail').value.trim(),password:$('#authPassword').value});if(error)return $('#authStatus').textContent='Acceso incorrecto: '+error.message;$('#authPassword').value='';await authReady(data.session);$('#authStatus').textContent=''});
 $('#signUpBtn').addEventListener('click',async()=>{if(!cloud)return;const email=$('#authEmail').value.trim(),password=$('#authPassword').value;if(!email||password.length<8)return $('#authStatus').textContent='Introduce correo y contraseña de al menos 8 caracteres.';if(!confirm('¿Crear una cuenta privada con este correo? Usa la contraseña inicial indicada y cámbiala después.'))return;const {data,error}=await cloud.auth.signUp({email,password});$('#authStatus').textContent=error?'No se pudo crear: '+error.message:'Cuenta creada. Comprueba tu correo si se solicita confirmación; después pulsa Acceder.';if(data?.session)await authReady(data.session)});
-$('#signOutBtn').addEventListener('click',async()=>{await writeQueue.catch(()=>{});await cloud?.auth.signOut();db=clean();activeUser=null;$('#privateApp').hidden=true;$('#authGate').hidden=false;$('#authPassword').value=''});
+$('#signOutBtn').addEventListener('click',async()=>{await writeQueue.catch(()=>{});await cloud?.auth.signOut();db=clean();activeUser=null;isAdmin=false;dataOwnerId=null;applyAdminAccess();reportRequest++;$('#privateApp').hidden=true;$('#authGate').hidden=false;$('#authPassword').value=''});
 if(!cloud){$('#authStatus').textContent='No se pudo inicializar el servicio de autenticación';}else cloud.auth.getSession().then(({data})=>authReady(data.session));
 const uuid=()=>globalThis.crypto?.randomUUID?.()||('e'+Date.now()+Math.random().toString(36).slice(2));
-const switchTab=(name)=>{document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===name));document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===name));if(name==='historial')renderHistory();if(name==='catalogos')renderCatalogs();if(name==='inicio')renderHome();window.scrollTo(0,0)};
+const switchTab=(name)=>{if(name==='datos'&&!requireAdmin())return;document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===name));document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab===name));if(name==='historial')renderHistory();if(name==='catalogos')renderCatalogs();if(name==='inicio')renderHome();window.scrollTo(0,0)};
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
 const today=()=>{const d=new Date(),off=d.getTimezoneOffset();return new Date(d.getTime()-off*60000).toISOString().slice(0,10)};
 const form=$('#shipmentForm');
@@ -28,7 +28,7 @@ const reset=()=>{form.reset();$('#driverSelect').value='';$('#editId').value='';
 reset();
 const getRecords=()=>[...db.shipments].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.updated||'').localeCompare(a.updated||''));
 const rows=(entries)=>entries.length?'<div class="tblwrap"><table><thead><tr><th>Fecha</th><th>Ref.</th><th>Destino</th><th>Vehículo</th><th>Palets</th><th>Acciones</th></tr></thead><tbody>'+entries.map(s=>'<tr><td>'+esc(s.date)+'</td><td><strong>'+esc(s.ref)+'</strong></td><td>'+esc(s.destination)+'</td><td>'+esc(s.tractor)+'</td><td>'+esc(s.pallets)+'</td><td><button class="btn" data-action="excel" data-id="'+esc(s.id)+'">CMR Excel original</button><button class="btn secondary" data-action="pdf" data-id="'+esc(s.id)+'">CMR PDF</button><button class="btn secondary" data-action="edit" data-id="'+esc(s.id)+'">Editar</button><button class="btn warn" data-action="delete" data-id="'+esc(s.id)+'">Eliminar</button></td></tr>').join('')+'</tbody></table></div>':'<p class="empty">Todavía no hay expediciones.</p>';
-function renderHome(){const arr=db.shipments;$('#kTotal').textContent=arr.length;$('#kPalets').textContent=arr.reduce((n,x)=>n+Number(x.pallets||0),0).toLocaleString('es-ES');$('#kToday').textContent=arr.filter(x=>x.date===today()).length;$('#kDest').textContent=new Set(arr.map(x=>x.destination?.trim().toLowerCase()).filter(Boolean)).size;$('#recent').innerHTML=rows(getRecords().slice(0,5))}
+function renderHome(){const arr=db.shipments;$('#kTotal').textContent=arr.length;$('#kPalets').textContent=arr.reduce((n,x)=>n+Number(x.pallets||0),0).toLocaleString('es-ES');$('#kToday').textContent=arr.filter(x=>x.date===today()).length;$('#kDest').textContent=new Set(arr.map(x=>x.destination?.trim().toLowerCase()).filter(Boolean)).size;$('#recent').innerHTML=rows(getRecords().slice(0,5));renderDestinationReport()}
 function renderHistory(){const q=$('#search').value.toLocaleLowerCase('es');$('#history').innerHTML=rows(getRecords().filter(x=>[x.ref,x.destination,x.carrier,x.tractor,x.trailer,x.date].some(v=>String(v??'').toLocaleLowerCase('es').includes(q))))}
 $('#search').addEventListener('input',renderHistory);
 function renderOptions(){const s=$('#destinationSelect');s.innerHTML='<option value="">Seleccionar o escribir manualmente</option>'+db.destinations.map(x=>'<option value="'+esc(x.code)+'">'+esc(x.code+' · '+x.name)+'</option>').join('');$('#carriersList').innerHTML=db.carriers.map(x=>'<option value="'+esc(x.name)+'"></option>').join('');$('#driverSelect').innerHTML='<option value="">Seleccionar conductor...</option>'+db.drivers.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('')}
@@ -75,8 +75,72 @@ docBox('6. Marcas o identificación de los bultos',d.goods)+docBox('7. Nº de bu
 function printDocument(id){const d=db.shipments.find(x=>x.id===id);if(!d)return;$('#printArea').hidden=false;$('#printArea').innerHTML=['cargador','transportista','destinatario','archivo / control'].map((c,i)=>documentPage(d,c,i+1)).join('');const finish=()=>{$('#printArea').hidden=true;window.removeEventListener('afterprint',finish)};window.addEventListener('afterprint',finish);window.print();}
 document.body.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(!b)return;let id=b.dataset.id;if(b.dataset.action==='edit')edit(id);if(b.dataset.action==='print')printDocument(id);if(b.dataset.action==='delete'&&confirm('¿Eliminar esta expedición? Esta operación no se puede deshacer salvo mediante una copia de seguridad.')){db.shipments=db.shipments.filter(x=>x.id!==id);if(save()){renderHome();renderHistory();msg('Expedición eliminada')}}});
 const download=(content,name,type)=>{let url=URL.createObjectURL(new Blob([content],{type}));let a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2500)};
-$('#exportBtn').addEventListener('click',()=>download(JSON.stringify({format:'expedidocs-v1',exportedAt:new Date().toISOString(),...db},null,2),'expedidocs-copia-'+today()+'.json','application/json'));
-$('#csvBtn').addEventListener('click',()=>{const keys=['ref','date','time','origin','destination','address','sender','consignee','carrier','tractor','trailer','driver','pallets','packages','weight','goods','seal','notes'];const quote=v=>'"'+String(v??'').replace(/"/g,'""').replace(/^[=+@-]/,'\u0027$&')+'"';download('\ufeff'+[keys.join(';'),...db.shipments.map(s=>keys.map(k=>quote(s[k])).join(';'))].join('\r\n'),'expediciones-'+today()+'.csv','text/csv;charset=utf-8')});
-$('#importFile').addEventListener('change',async e=>{let file=e.target.files?.[0];if(!file)return;try{if(file.size>10_000_000)throw Error('Archivo demasiado grande');let x=JSON.parse(await file.text());if(x.format!=='expedidocs-v1'||!Array.isArray(x.shipments)||!Array.isArray(x.destinations)||!Array.isArray(x.carriers)||(x.drivers!==undefined&&!Array.isArray(x.drivers))||x.shipments.some(s=>!s.id||!s.ref||!s.date||!s.destination)||x.shipments.length>100000)throw Error('Formato de copia no válido');if(!confirm('La importación sustituirá TODAS las expediciones y catálogos locales actuales. ¿Continuar?'))return;let prev=db;db={version:1,shipments:x.shipments,destinations:x.destinations,carriers:x.carriers,drivers:x.drivers||[],tractors:x.tractors||[],trailers:x.trailers||[]};if(!save())db=prev;else{renderHome();renderCatalogs();renderHistory();msg('Copia restaurada correctamente')}}catch(err){msg(err.message||'Error al importar')}finally{e.target.value=''}});
-$('#wipeBtn').addEventListener('click',()=>{if(prompt('Escribe BORRAR para eliminar expediciones y catálogos locales:')!=='BORRAR')return;let prev=db;db=clean();if(!save())db=prev;else{renderHome();renderCatalogs();renderHistory();reset();msg('Datos locales eliminados')}});
-renderHome();renderCatalogs();
+$('#exportBtn').addEventListener('click',()=>{if(!requireAdmin())return;download(JSON.stringify({format:'expedidocs-v1',exportedAt:new Date().toISOString(),...db},null,2),'expedidocs-copia-'+today()+'.json','application/json')});
+$('#csvBtn').addEventListener('click',()=>{if(!requireAdmin())return;const keys=['ref','date','time','origin','destination','address','sender','consignee','carrier','tractor','trailer','driver','pallets','packages','weight','goods','seal','notes'];const quote=v=>'"'+String(v??'').replace(/"/g,'""').replace(/^[=+@-]/,'\u0027$&')+'"';download('\ufeff'+[keys.join(';'),...db.shipments.map(s=>keys.map(k=>quote(s[k])).join(';'))].join('\r\n'),'expediciones-'+today()+'.csv','text/csv;charset=utf-8')});
+$('#importFile').addEventListener('change',async e=>{let file=e.target.files?.[0];if(!file)return;if(!requireAdmin()){e.target.value='';return}try{if(file.size>10_000_000)throw Error('Archivo demasiado grande');let x=JSON.parse(await file.text());if(x.format==='expedidocs-admin-v1'){if(!Array.isArray(x.accounts)||x.accounts.some(a=>!a.user_id||!Array.isArray(a.payload?.shipments)||!Array.isArray(a.payload?.destinations)||!Array.isArray(a.payload?.carriers)))throw Error('Copia completa no válida');if(!confirm('¿Restaurar las cuentas incluidas en esta copia completa? Se sustituirán sus datos actuales.'))return;await writeQueue;const {error}=await cloud.from('expedidocs_data').upsert(x.accounts.map(a=>({user_id:a.user_id,payload:a.payload,updated_at:new Date().toISOString()})),{onConflict:'user_id'});if(error)throw error;await loadAdminAccounts();await selectAdminAccount();msg('Copia completa restaurada');return}if(x.format!=='expedidocs-v1'||!Array.isArray(x.shipments)||!Array.isArray(x.destinations)||!Array.isArray(x.carriers)||(x.drivers!==undefined&&!Array.isArray(x.drivers))||x.shipments.some(s=>!s.id||!s.ref||!s.date||!s.destination)||x.shipments.length>100000)throw Error('Formato de copia no válido');if(!confirm('La importación sustituirá las expediciones y catálogos de la cuenta seleccionada. ¿Continuar?'))return;let prev=db;db={version:1,shipments:x.shipments,destinations:x.destinations,carriers:x.carriers,drivers:x.drivers||[],tractors:x.tractors||[],trailers:x.trailers||[]};if(!save())db=prev;else{renderHome();renderCatalogs();renderHistory();msg('Copia restaurada correctamente')}}catch(err){msg(err.message||'Error al importar')}finally{e.target.value=''}});
+$('#wipeBtn').addEventListener('click',()=>{if(!requireAdmin())return;if(prompt('Escribe BORRAR para eliminar expediciones y catálogos de la cuenta seleccionada:')!=='BORRAR')return;let prev=db;db=clean();if(!save())db=prev;else{renderHome();renderCatalogs();renderHistory();reset();msg('Datos locales eliminados')}});
+
+function applyAdminAccess(){
+ document.querySelector('[data-tab="datos"]').hidden=!isAdmin;
+ $('#datos').hidden=!isAdmin;
+ $('#adminAccountPanel').hidden=!isAdmin;
+ $('#roleLabel').textContent=activeUser?(isAdmin?'Administración':'Usuario'):'';
+ if(!isAdmin&&$('#datos').classList.contains('active'))switchTab('inicio');
+}
+function requireAdmin(){if(!activeUser||!isAdmin){msg('Esta acción está reservada a administración');return false}return true}
+async function loadAdminAccounts(){
+ if(!isAdmin)return;
+ const {data,error}=await cloud.rpc('expedidocs_admin_accounts');
+ if(error){msg('No se pudo cargar el listado de cuentas');return}
+ $('#adminAccount').innerHTML=(data||[]).map(a=>'<option value="'+esc(a.id)+'">'+esc(a.email)+' · '+Number(a.shipments||0)+' expediciones</option>').join('');
+ $('#adminAccount').value=dataOwnerId;
+ $('#managedAccount').textContent=$('#adminAccount').selectedOptions[0]?.textContent||'Mi cuenta';
+}
+async function selectAdminAccount(){
+ if(!requireAdmin())return;
+ const target=$('#adminAccount').value;
+ if(!target)return;
+ $('#adminAccount').disabled=true;
+ try{
+  await writeQueue;
+  const {data,error}=await cloud.from('expedidocs_data').select('payload').eq('user_id',target).maybeSingle();
+  if(error)throw error;
+  dataOwnerId=target;db={...clean(),...(data?.payload||{})};
+  reset();if(typeof qClear==='function')qClear();
+  renderHome();renderCatalogs();renderHistory();
+  $('#managedAccount').textContent=$('#adminAccount').selectedOptions[0]?.textContent||'';
+  msg('Cuenta seleccionada para consultar y gestionar');
+ }catch(e){$('#adminAccount').value=dataOwnerId;msg('No se pudo abrir la cuenta: '+e.message)}
+ finally{$('#adminAccount').disabled=false}
+}
+function destinationReportHTML(entries){
+ const total=entries.reduce((n,r)=>n+Number(r.pallets||0),0);
+ const shipments=entries.reduce((n,r)=>n+Number(r.shipments||0),0);
+ $('#reportSummary').textContent=shipments.toLocaleString('es-ES')+' expediciones · '+total.toLocaleString('es-ES')+' palets · '+entries.length+' destinos';
+ return entries.length?'<table><thead><tr><th>Destino</th><th>Expediciones</th><th>Palets enviados</th><th>% de palets</th><th>Peso (kg)</th><th>Último envío</th></tr></thead><tbody>'+entries.map(r=>'<tr><td><strong>'+esc(r.destination)+'</strong></td><td>'+Number(r.shipments||0).toLocaleString('es-ES')+'</td><td><strong>'+Number(r.pallets||0).toLocaleString('es-ES')+'</strong></td><td>'+(total?100*Number(r.pallets||0)/total:0).toLocaleString('es-ES',{maximumFractionDigits:1})+' %</td><td>'+Number(r.weight||0).toLocaleString('es-ES')+'</td><td>'+esc(r.last_date||'—')+'</td></tr>').join('')+'</tbody></table>':'<p class="empty">No hay envíos en este periodo.</p>';
+}
+async function renderDestinationReport(){
+ const seq=++reportRequest;
+ if(!activeUser||!cloud){$('#destinationReport').innerHTML='';$('#reportSummary').textContent='';return}
+ const from=$('#reportFrom').value||null,to=$('#reportTo').value||null;
+ if(from&&to&&from>to){$('#destinationReport').textContent='La fecha inicial debe ser anterior a la final.';$('#reportSummary').textContent='';return}
+ try{
+  await writeQueue;
+  const {data,error}=await cloud.rpc('expedidocs_report',{date_from:from,date_to:to});
+  if(error)throw error;
+  if(seq!==reportRequest||!activeUser)return;
+  $('#destinationReport').innerHTML=destinationReportHTML(data||[]);
+  $('#reportUpdated').textContent='Actualizado: '+new Date().toLocaleString('es-ES');
+ }catch(e){if(seq===reportRequest){$('#destinationReport').textContent='No se pudo actualizar el informe. Pulsa Sincronizar para reintentar.';$('#reportSummary').textContent=''}}
+}
+$('#adminAccount').addEventListener('change',selectAdminAccount);
+$('#reportFrom').addEventListener('change',renderDestinationReport);
+$('#reportTo').addEventListener('change',renderDestinationReport);
+$('#reportToday').addEventListener('click',()=>{$('#reportFrom').value=today();$('#reportTo').value=today();renderDestinationReport()});
+$('#reportAll').addEventListener('click',()=>{$('#reportFrom').value='';$('#reportTo').value='';renderDestinationReport()});
+$('#exportAllBtn').addEventListener('click',async()=>{
+ if(!requireAdmin())return;
+ try{await writeQueue;const {data,error}=await cloud.rpc('expedidocs_admin_backup');if(error)throw error;download(JSON.stringify({format:'expedidocs-admin-v1',exportedAt:new Date().toISOString(),accounts:data},null,2),'expedidocs-todas-las-cuentas-'+today()+'.json','application/json')}catch(e){msg('No se pudo crear la copia completa: '+e.message)}
+});
+
+applyAdminAccess();renderHome();renderCatalogs();

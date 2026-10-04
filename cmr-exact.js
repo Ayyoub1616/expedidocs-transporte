@@ -49,7 +49,7 @@ async function exactCMR(shipment){
   const map={
    A9:[shipment.consignee||shipment.destination,shipment.address||''].filter(Boolean).join('\n'),
    C13:shipment.destination||'',C14:serial||'',A15:shipment.origin||'ZARAGOZA',
-   F11:[shipment.carrier||'OPERADOR LOGÍSTICO MONJE, S.L.U.',shipment.carrierTax||'B50655216'].filter(Boolean).join(' · CIF '),
+   F11:[/monje/i.test(shipment.carrier||'')?'MONJE':shipment.carrier||'MONJE',shipment.carrierTax||'B50655216'].filter(Boolean).join(' · CIF '),
    D21:shipment.pallets??'',I21:shipment.trailer||'',H21:shipment.tractor||'',
    I22:shipment.driver||'',I23:shipment.driverId||'',I24:shipment.phone||'',
    A24:shipment.bars??'',B27:shipment.pallets??'',B28:shipment.weight??'',B29:shipment.seal??'',

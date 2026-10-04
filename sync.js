@@ -3,12 +3,14 @@
 let syncBusy=false;
 async function syncExpediDocs(showFeedback=true){
  if(syncBusy||!activeUser||!cloud)return;
+ const owner=dataOwnerId||activeUser.id;
  syncBusy=true;const btn=document.querySelector('#syncNow');btn.disabled=true;
  try{
   await writeQueue.catch(()=>{});
   cloudStatus('↻ Sincronizando...');
-  const {data,error}=await cloud.from('expedidocs_data').select('payload,updated_at').eq('user_id',activeUser.id).maybeSingle();
+  const {data,error}=await cloud.from('expedidocs_data').select('payload,updated_at').eq('user_id',owner).maybeSingle();
   if(error)throw error;
+  if(owner!==(dataOwnerId||activeUser?.id))return;
   if(data?.payload){
    const p=data.payload;
    if(Array.isArray(p.shipments)&&Array.isArray(p.destinations)&&Array.isArray(p.drivers)){

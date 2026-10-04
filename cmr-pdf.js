@@ -60,7 +60,7 @@ async function exactCMRPdf(d){
   place(page,215.5,255.1,d.destination||'','serif',8.6,88,false);
   place(page,176.1,276.3,date,'sans',6.6,100);
   place(page,163.4,296,d.origin||'ZARAGOZA','sans',9.2,150);
-  place(page,396.2,207.6,[d.carrier||'OPERADOR LOGÍSTICO MONJE, S.L.U.','CIF '+(d.carrierTax||'B50655216')].join(' · '),'serif',7.9,215,true);
+  place(page,396.2,207.6,[/monje/i.test(d.carrier||'')?'MONJE':d.carrier||'MONJE','CIF '+(d.carrierTax||'B50655216')].join(' · '),'serif',7.9,215,true);
   place(page,233.2,417.1,d.pallets??'','sans',11.9,50,true);
   place(page,194.5,520.6,d.pallets??'','sans',11.9,60,true);
   place(page,178.3,538.4,weight,'sans',11.9,78,true);
