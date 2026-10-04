@@ -56,7 +56,7 @@ async function exactCMRPdf(d){
  const stampDate=d.date?new Date(d.date+'T12:00:00').toLocaleDateString('es-ES')+' '+(d.time||new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})):'';
  const weight=d.weight===''||d.weight==null?'':Number(d.weight).toLocaleString('es-ES',{maximumFractionDigits:2});
  for(const page of pdf.getPages()){
-  place(page,171.2,193,[d.consignee||d.destination,d.address].filter(Boolean).join(' '),'serif',9.2,186,true,2);
+  place(page,171.2,193,[d.consignee||d.destination,...((d.consignee||'').includes(d.address||'###')?[]:[d.address||''])].filter(Boolean).join(' '),'serif',9.2,186,true,2);
   place(page,215.5,255.1,d.origin||'ZARAGOZA','serif',8.6,88,false);
   place(page,176.1,276.3,date,'sans',6.6,100);
   place(page,163.4,296,d.origin||'ZARAGOZA','sans',9.2,150);
