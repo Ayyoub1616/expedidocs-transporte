@@ -23,3 +23,6 @@ La lógica de macros VBA, formularios exactos por plantilla de destino y funcion
 
 ## Desarrollo
 Sin dependencias ni compilación: `index.html`, `styles.css`, `app.js`, `manifest.webmanifest`.
+
+## Acceso privado (octubre 2026)
+La aplicación se conecta al proyecto independiente Supabase `shrmlnantusaaeqetlkk`. Usa registro/inicio de sesión de Supabase Auth mediante correo y contraseña. La contraseña no se codifica en archivos estáticos. Una tabla `expedidocs_data` con Row Level Security restringe cada fila a `auth.uid() = user_id`. Catálogos, conductores y expediciones se guardan dentro del JSON privado de ese usuario. Los datos originales se importan desde un archivo privado por medio de la interfaz. No subir archivos JSON con DNI/teléfonos al repositorio ni incluir contraseñas en source. El repositorio y la interfaz de Pages pueden permanecer públicos, pero el contenido de la base privada no lo es. La protección por sí sola no convierte a GitHub Pages en un hosting privado.
