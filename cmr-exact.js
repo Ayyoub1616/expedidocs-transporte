@@ -24,33 +24,39 @@ const control=document.createElement('div');control.className='note';control.inn
 document.querySelector('#datos').prepend(control);
 getTemplate().then(()=>msg('Plantilla Excel original preparada')).catch(e=>console.warn('No se pudo precargar la plantilla:',e));
 const XML_NS='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
-function replaceCell(doc,reference,value){
+function replaceCell(doc,reference,value,numeric=false){
  let cell=[...doc.getElementsByTagNameNS(XML_NS,'c')].find(el=>el.getAttribute('r')===reference);if(!cell)return;
  // Replace only its value/formula; retain original cell style (s), merge geometry and all other XML.
  for(const ch of [...cell.children])if(['v','is','f'].includes(ch.localName))cell.removeChild(ch);
+ if(numeric){cell.setAttribute('t','n');const v=doc.createElementNS(XML_NS,'v');v.textContent=String(value??0);cell.append(v);return}
  cell.setAttribute('t','inlineStr');const i=doc.createElementNS(XML_NS,'is'),t=doc.createElementNS(XML_NS,'t');t.setAttribute('xml:space','preserve');t.textContent=String(value??'');i.append(t);cell.append(i);
 }
 async function exactCMR(shipment){
  const bytes=await getTemplate();
  if(!window.JSZip){msg('No se ha podido cargar el generador XLSX');return}
  const zip=await JSZip.loadAsync(bytes);const dt=shipment.date?new Date(shipment.date+'T12:00:00').toLocaleDateString('es-ES'):'';
+ const serial=shipment.date?(Date.parse(shipment.date+'T00:00:00Z')-Date.UTC(1899,11,30))/86400000:0;
+ const clock=shipment.time||new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+ const [hh,mm]=clock.split(':').map(Number);
+ const datetime=serial+((hh||0)*60+(mm||0))/1440;
  for(let i=1;i<=4;i++){
   const path='xl/worksheets/sheet'+i+'.xml',doc=new DOMParser().parseFromString(await zip.file(path).async('string'),'application/xml');
   // The XLSM input panel was M:R, outside the printable A:I region. Map the
   // original printable cells only; never move the right-hand input panel into the CMR.
   const map={
    A9:[shipment.consignee||shipment.destination,shipment.address||''].filter(Boolean).join(' — '),
-   C13:shipment.origin||'ZARAGOZA',C14:dt,A15:(shipment.origin||'ZARAGOZA').toUpperCase(),
+   C13:shipment.origin||'ZARAGOZA',C14:serial,A15:(shipment.origin||'ZARAGOZA').toUpperCase(),
    F11:[shipment.carrier||'OPERADOR LOGÍSTICO MONJE, S.L.U.',shipment.carrierTax||'B50655216'].join(' · CIF '),
    D21:shipment.pallets??'',B27:shipment.pallets??'',
    B28:shipment.weight??'',B29:shipment.seal??'',
    H21:shipment.tractor||'',I21:shipment.trailer||'',I22:shipment.driver||'',I23:shipment.driverId||'',I24:shipment.phone||'',
    C32:shipment.tractor||'',C33:shipment.trailer||'',
    H27:shipment.mocaco||'',H29:shipment.mocaco2||'',
-   G38:dt,E35:shipment.notes||'',
-   A47:'',C52:dt
+   G38:serial,E35:shipment.notes||'',
+   A47:'',C52:datetime
   };
-  for(const [ref,val] of Object.entries(map))replaceCell(doc,ref,val);
+  const numericCells=new Set(['C14','D21','B27','B28','G38','C52']);
+  for(const [ref,val] of Object.entries(map))replaceCell(doc,ref,val,numericCells.has(ref)&&val!==''&&val!=null);
   zip.file(path,new XMLSerializer().serializeToString(doc));
  }
  const out=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
