@@ -52,7 +52,9 @@ async function exactCMRPdf(d){
    pg.drawText(str,{x:xpos,y:pg.getHeight()-top-i*(actual+1.3),size:actual,font:ff,color:PDFLib.rgb(0,0,0),maxWidth:maxW});
   });
  }
- const date=d.date?new Date(d.date+'T12:00:00').toLocaleDateString('es-ES'):'';
+ const date=d.date?new Date(d.date+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}):'';
+ const stampDate=d.date?new Date(d.date+'T12:00:00').toLocaleDateString('es-ES')+' '+(d.time||new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})):'';
+ const weight=d.weight===''||d.weight==null?'':Number(d.weight).toLocaleString('es-ES',{maximumFractionDigits:2});
  for(const page of pdf.getPages()){
   place(page,171.2,193,[d.consignee||d.destination,d.address].filter(Boolean).join(' '),'serif',9.2,186,true,2);
   place(page,215.5,255.1,d.origin||'ZARAGOZA','serif',8.6,88,false);
@@ -61,7 +63,7 @@ async function exactCMRPdf(d){
   place(page,389.6,207.6,[d.carrier||'OPERADOR LOGÍSTICO MONJE, S.L.U.','CIF '+(d.carrierTax||'B50655216')].join(' · '),'serif',7.9,160);
   place(page,233.2,417.1,d.pallets??'','sans',11.9,50,true);
   place(page,194.5,520.6,d.pallets??'','sans',11.9,60,true);
-  place(page,178.3,538.4,d.weight??'','sans',11.9,78,true);
+  place(page,178.3,538.4,weight,'sans',11.9,78,true);
   place(page,194.5,553.8,d.seal??'','sans',11.9,85,true);
   place(page,383.2,418.8,d.tractor??'','serif',10.6,72,true);
   place(page,474,418.8,d.trailer??'','serif',10.6,78,true);
@@ -74,7 +76,7 @@ async function exactCMRPdf(d){
   place(page,431.6,560.1,d.mocaco2??'','serif',13.2,145,true);
   place(page,413,653.4,date,'serif',9.2,110,true);
   place(page,250,634.1,d.notes??'','regular',6.6,220,false,2);
-  place(page,222.6,775.5,date,'serif',9.2,94,true);
+  place(page,222.6,775.5,stampDate,'serif',9.2,94,true);
   // Point 16 is deliberately empty. It is never drawn into the PDF.
  }
  const bytes=await pdf.save({useObjectStreams:true});
