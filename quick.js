@@ -99,8 +99,8 @@ qForm.addEventListener('submit',e=>{
  const d={...(old||{}),...FIXED_SENDER,...Object.fromEntries(new FormData(qForm)),date:qForm.elements.date.value,
  destinationId:dest.id,destination:dest.name,address:dest.address,consignee:dest.name+' — '+dest.address,
  tractor:tr,trailer:tl,driverCatalogId:driver.id,driver:driver.name,driverId:driver.driverId||'',phone:driver.phone||'',
- carrier:old?.carrier||'MONJE',carrierTax:old?.carrierTax||'',origin:'Zaragoza',dispatcher:'',pallets:Number(qForm.elements.pallets.value),
- packages:0,bars:0,packaging:'Palets de madera',goods:'PALETS MADERA ENVIADOS',mode:'Normal',weight:old?.weight??'',
+ carrier:'OPERADOR LOGÍSTICO MONJE, S.L.U.',carrierTax:'B50655216',origin:'Zaragoza',dispatcher:'',pallets:Number(qForm.elements.pallets.value),
+ packages:0,bars:0,packaging:'Palets de madera',goods:'PALETS MADERA ENVIADOS',mode:'Normal',weight:old?.weight??(Number(qForm.elements.pallets.value)*0||''),
  unloadDate:qForm.elements.date.value,model:[qForm.elements.mocaco.value,qForm.elements.mocaco2.value].filter(Boolean).join('\n'),
  id:old?.id||uuid(),ref:old?.ref||('EXP-'+Date.now().toString(36).toUpperCase()),
  created:old?.created||new Date().toISOString(),updated:new Date().toISOString()};
