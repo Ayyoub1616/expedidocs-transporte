@@ -43,19 +43,18 @@ async function exactCMR(shipment){
   const path='xl/worksheets/sheet'+i+'.xml',doc=new DOMParser().parseFromString(await zip.file(path).async('string'),'application/xml');
   // The XLSM input panel was M:R, outside the printable A:I region. Map the
   // original printable cells only; never move the right-hand input panel into the CMR.
+  // Exact editable cells mapped against the original CARGADOR/TRANSPORTISTA/EXPEDIDOR/DESTINATARIO sheets.
   const map={
-   A9:[shipment.consignee||shipment.destination,shipment.address||''].filter(Boolean).join(' — '),
-   C13:shipment.origin||'ZARAGOZA',C14:serial,A15:(shipment.origin||'ZARAGOZA').toUpperCase(),
-   F11:[shipment.carrier||'OPERADOR LOGÍSTICO MONJE, S.L.U.',shipment.carrierTax||'B50655216'].join(' · CIF '),
-   D21:shipment.pallets??'',B27:shipment.pallets??'',
-   B28:shipment.weight??'',B29:shipment.seal??'',
-   H21:shipment.tractor||'',I21:shipment.trailer||'',I22:shipment.driver||'',I23:shipment.driverId||'',I24:shipment.phone||'',
+   A9:[shipment.consignee||shipment.destination,shipment.address||''].filter(Boolean).join('\\n'),
+   C13:shipment.destination||'',C14:dt,A15:'ZARAGOZA',
+   F11:[shipment.carrier||'OPERADOR LOGÍSTICO MONJE, S.L.U.',shipment.carrierTax||'B50655216'].filter(Boolean).join(' · CIF '),
+   D21:shipment.pallets??'',I21:shipment.trailer||'',H21:shipment.tractor||'',
+   I22:shipment.driver||'',I23:shipment.driverId||'',I24:shipment.phone||'',
+   B27:shipment.pallets??'',B28:shipment.weight??'',B29:shipment.seal??'',
    C32:shipment.tractor||'',C33:shipment.trailer||'',
-   H27:shipment.mocaco||'',H29:shipment.mocaco2||'',
-   G38:serial,E35:shipment.notes||'',
-   A47:'',C52:datetime
+   G38:shipment.unloadDate||shipment.date||'',E35:shipment.notes||'',
+   A47:''
   };
-  const numericCells=new Set(['C14','D21','B27','B28','G38','C52']);
   for(const [ref,val] of Object.entries(map))replaceCell(doc,ref,val,numericCells.has(ref)&&val!==''&&val!=null);
   zip.file(path,new XMLSerializer().serializeToString(doc));
  }
