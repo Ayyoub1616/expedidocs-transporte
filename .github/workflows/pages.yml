@@ -21,8 +21,19 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Prepare self-hosted app and spreadsheet/PDF libraries
+        run: |
+          set -euo pipefail
+          mkdir -p site/vendor
+          cp index.html app.js quick.js sync.js cmr-exact.js cmr-pdf.js styles.css manifest.webmanifest cmr_exact_template.b64 cmr_pdf_background.b64 site/
+          curl --retry 3 --fail --location --silent --show-error 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js' -o site/vendor/supabase.min.js
+          curl --retry 3 --fail --location --silent --show-error 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js' -o site/vendor/jszip.min.js
+          curl --retry 3 --fail --location --silent --show-error 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js' -o site/vendor/pdf-lib.min.js
+          test -s site/vendor/supabase.min.js
+          test -s site/vendor/jszip.min.js
+          test -s site/vendor/pdf-lib.min.js
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: site
       - id: deployment
         uses: actions/deploy-pages@v4
