@@ -7,3 +7,5 @@
 
 .cmr-stamp-text{font-family:Georgia,serif;color:#45548c;border:2px solid #536395;transform:rotate(-2deg);display:inline-block;text-align:center;padding:2px 7px;line-height:1.2;font-size:9px;font-weight:700;margin:2mm 0 0 4mm;opacity:.8}
 @media print{#authGate{display:none!important}#privateApp{display:none!important}#printArea{position:static!important;display:block!important;overflow:visible!important}.cmr-page{position:relative;clear:both;overflow:hidden!important}.cmr-page .cmr-main .cmr-box{flex:1 1 0!important}.cmr-page .cmr-mid{grid-template-columns:1.35fr 1fr!important}.cmr-page .cmr-sign{display:grid!important;grid-template-columns:repeat(3,1fr)!important}.cmr-page .cmr-copy{z-index:1;background:white}.cmr-page .cmr-sign>div{overflow:hidden}}
+
+@media print{.cmr-page footer{display:none!important}.cmr-page .cmr-copy{white-space:nowrap!important}.cmr-page .cmr-bottom .cmr-box{overflow:hidden!important}}
