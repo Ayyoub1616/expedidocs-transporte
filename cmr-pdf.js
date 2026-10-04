@@ -57,7 +57,7 @@ async function exactCMRPdf(d){
  const weight=d.weight===''||d.weight==null?'':Number(d.weight).toLocaleString('es-ES',{maximumFractionDigits:2});
  for(const page of pdf.getPages()){
   place(page,171.2,193,[d.consignee||d.destination,...((d.consignee||'').includes(d.address||'###')?[]:[d.address||''])].filter(Boolean).join(' '),'serif',9.2,186,true,2);
-  place(page,215.5,255.1,d.origin||'ZARAGOZA','serif',8.6,88,false);
+  place(page,215.5,255.1,d.destination||'','serif',8.6,88,false);
   place(page,176.1,276.3,date,'sans',6.6,100);
   place(page,163.4,296,d.origin||'ZARAGOZA','sans',9.2,150);
   place(page,396.2,207.6,[d.carrier||'OPERADOR LOGÍSTICO MONJE, S.L.U.','CIF '+(d.carrierTax||'B50655216')].join(' · '),'serif',7.9,215,true);
@@ -74,7 +74,7 @@ async function exactCMRPdf(d){
   place(page,222.7,607.8,d.trailer??'','sans',9.2,112,true);
   place(page,431.6,528.2,d.mocaco??'','serif',13.2,145,true);
   place(page,431.6,560.1,d.mocaco2??'','serif',13.2,145,true);
-  place(page,413,653.4,date,'serif',9.2,110,true);
+  place(page,413,653.4,d.unloadDate?new Date(d.unloadDate+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}):date,'serif',9.2,110,true);
   place(page,250,634.1,d.notes??'','regular',6.6,220,false,2);
   place(page,222.6,775.5,stampDate,'serif',9.2,94,true);
   // Point 16 is deliberately empty. It is never drawn into the PDF.
