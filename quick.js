@@ -98,7 +98,7 @@ qForm.addEventListener('submit',e=>{
  if(!dest||!driver||!tr||!tl)return msg('Selecciona destino, conductor, tractora y remolque');
  const old=db.shipments.find(x=>x.id===document.querySelector('#qEdit').value);
  const d={...(old||{}),...FIXED_SENDER,...Object.fromEntries(new FormData(qForm)),date:qForm.elements.date.value,
- destinationId:dest.id,destination:dest.name,address:dest.address,consignee:dest.name+' — '+dest.address,
+ destinationId:dest.id,destination:dest.name,address:dest.address,consignee:dest.name,
  tractor:tr,trailer:tl,driverCatalogId:driver.id,driver:driver.name,driverId:driver.driverId||'',phone:driver.phone||'',
  carrier:'OPERADOR LOGÍSTICO MONJE, S.L.U.',carrierTax:'B50655216',origin:'Zaragoza',dispatcher:'',pallets:Number(qForm.elements.pallets.value),
  packages:0,bars:0,packaging:'Palets de madera',goods:'PALETS MADERA ENVIADOS',mode:'Normal',weight:qForm.elements.weight.value===''?'':Number(qForm.elements.weight.value),
