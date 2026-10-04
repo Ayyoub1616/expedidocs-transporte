@@ -92,8 +92,8 @@ async function exactCMRPdf(d){
   page.drawPage(embedded,{x:margin,y:margin,width:page.getWidth()-margin*2,height:page.getHeight()-margin*2});
  }
  const bytes=await expanded.save({useObjectStreams:true});
- download(new Blob([bytes],{type:'application/pdf'}),'CMR-ORIGINAL-'+String(d.ref||'expedicion').replace(/[^a-z0-9_-]/gi,'_')+'.pdf','application/pdf');
- msg('CMR PDF generado con los cuatro ejemplares del diseño original');
+ download(new Blob([bytes],{type:'application/pdf'}),'CMR-A4-ANCHO-'+String(d.ref||'expedicion').replace(/[^a-z0-9_-]/gi,'_')+'.pdf','application/pdf');
+ msg('CMR PDF A4 ancho generado · 4 copias · márgenes de 7 mm');
 }
 document.addEventListener('click',async e=>{
  const btn=e.target.closest('[data-action="pdf"]');if(!btn)return;
