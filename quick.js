@@ -23,7 +23,8 @@ const qHtml='<div class="quick-hint"><strong>Solo lo necesario.</strong> Cargado
 '<label class="field">TRACTORA *<select id="qTractor" required></select></label>'+
 '<label class="field">REMOLQUE *<select id="qTrailer" required></select></label>'+
 '<label class="field">Nº PALETS *<input name="pallets" type="number" min="0" max="999999" value="0" required></label>'+
-'<label class="field">PRECINTO<input name="seal" maxlength="60"></label>'+
+'<label class="field">PRECINTO<input name="seal" maxlength="60"></label>'+ 
+'<label class="field">PESO CARGA (kg)<input name="weight" type="number" min="0" max="1000000" step="0.01" placeholder="Ej. 9000"></label>'+
 '<label class="field wide">CONDUCTOR *<select id="qDriver" required></select></label>'+
 '<label class="field">NOMBRE<input id="qDriverName" class="quick-readonly" readonly></label>'+
 '<label class="field">NIF / NIE<input id="qDni" class="quick-readonly" readonly></label>'+
@@ -80,7 +81,7 @@ edit=function(id){
  const s=db.shipments.find(x=>x.id===id);if(!s)return;
  qClear();renderQuick();document.querySelector('#qEdit').value=s.id;
  document.querySelector('#formTitle').textContent='Editar · '+s.ref;
- for(const k of ['date','pallets','seal','mocaco','mocaco2','notes'])if(qForm.elements[k])qForm.elements[k].value=s[k]??'';
+ for(const k of ['date','pallets','seal','weight','mocaco','mocaco2','notes'])if(qForm.elements[k])qForm.elements[k].value=s[k]??'';
  const dest=db.destinations.find(x=>x.id===s.destinationId||x.name===s.destination);
  if(dest)document.querySelector('#qDest').value=dest.id;
  document.querySelector('#qTractor').value=s.tractor||'';
@@ -100,7 +101,7 @@ qForm.addEventListener('submit',e=>{
  destinationId:dest.id,destination:dest.name,address:dest.address,consignee:dest.name+' — '+dest.address,
  tractor:tr,trailer:tl,driverCatalogId:driver.id,driver:driver.name,driverId:driver.driverId||'',phone:driver.phone||'',
  carrier:'OPERADOR LOGÍSTICO MONJE, S.L.U.',carrierTax:'B50655216',origin:'Zaragoza',dispatcher:'',pallets:Number(qForm.elements.pallets.value),
- packages:0,bars:0,packaging:'Palets de madera',goods:'PALETS MADERA ENVIADOS',mode:'Normal',weight:old?.weight??(Number(qForm.elements.pallets.value)*0||''),
+ packages:0,bars:0,packaging:'Palets de madera',goods:'PALETS MADERA ENVIADOS',mode:'Normal',weight:qForm.elements.weight.value===''?'':Number(qForm.elements.weight.value),
  unloadDate:qForm.elements.date.value,model:[qForm.elements.mocaco.value,qForm.elements.mocaco2.value].filter(Boolean).join('\n'),
  id:old?.id||uuid(),ref:old?.ref||('EXP-'+Date.now().toString(36).toUpperCase()),
  created:old?.created||new Date().toISOString(),updated:new Date().toISOString()};
