@@ -57,7 +57,7 @@ async function exactCMRPdf(d){
  const weight=d.weight===''||d.weight==null?'':Number(d.weight).toLocaleString('es-ES',{maximumFractionDigits:2});
  for(const page of pdf.getPages()){
   place(page,171.2,193,[d.consignee||d.destination,...((d.consignee||'').includes(d.address||'###')?[]:[d.address||''])].filter(Boolean).join(' '),'serif',9.2,186,true,2);
-  place(page,215.5,255.1,d.destination||'','serif',8.6,88,false);
+  place(page,215.5,255.1,d.destination||'','serif',8.6,88,true);
   place(page,176.1,276.3,date,'sans',6.6,100);
   place(page,163.4,296,d.origin||'ZARAGOZA','sans',9.2,150);
   place(page,396.2,207.6,[/monje/i.test(d.carrier||'')?'MONJE':d.carrier||'MONJE','CIF '+(d.carrierTax||'B50655216')].join(' · '),'serif',7.9,215,true);
@@ -79,7 +79,19 @@ async function exactCMRPdf(d){
   place(page,222.6,775.5,stampDate,'serif',9.2,94,true);
   // Point 16 is deliberately empty. It is never drawn into the PDF.
  }
- const bytes=await pdf.save({useObjectStreams:true});
+ // Expand the original background and filled values together onto A4.
+ // Remove only the surrounding white space; preserve every original CMR element.
+ await pdf.flush();
+ const expanded=await PDFLib.PDFDocument.create();
+ const margin=20;
+ for(const original of pdf.getPages()){
+  const embedded=await expanded.embedPage(original,{
+   left:70,right:525,bottom:original.getHeight()-814,top:original.getHeight()-28
+  });
+  const page=expanded.addPage(PDFLib.PageSizes.A4);
+  page.drawPage(embedded,{x:margin,y:margin,width:page.getWidth()-margin*2,height:page.getHeight()-margin*2});
+ }
+ const bytes=await expanded.save({useObjectStreams:true});
  download(new Blob([bytes],{type:'application/pdf'}),'CMR-ORIGINAL-'+String(d.ref||'expedicion').replace(/[^a-z0-9_-]/gi,'_')+'.pdf','application/pdf');
  msg('CMR PDF generado con los cuatro ejemplares del diseño original');
 }
