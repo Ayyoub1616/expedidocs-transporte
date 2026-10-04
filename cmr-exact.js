@@ -4,11 +4,25 @@
 const EXACT_DB='expedidocs-native-template', EXACT_STORE='assets';
 function templateDatabase(){return new Promise((resolve,reject)=>{const q=indexedDB.open(EXACT_DB,1);q.onupgradeneeded=()=>q.result.createObjectStore(EXACT_STORE);q.onerror=()=>reject(q.error);q.onsuccess=()=>resolve(q.result)})}
 async function storeTemplate(bytes){const d=await templateDatabase();await new Promise((resolve,reject)=>{const tx=d.transaction(EXACT_STORE,'readwrite');tx.objectStore(EXACT_STORE).put(bytes,'cmr');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});d.close()}
-async function getTemplate(){const d=await templateDatabase();const r=await new Promise((resolve,reject)=>{const tx=d.transaction(EXACT_STORE);const q=tx.objectStore(EXACT_STORE).get('cmr');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)});d.close();return r}
-const control=document.createElement('div');control.className='panel';control.innerHTML='<h2>Plantilla CMR Excel original</h2><p class="muted">El CMR exacto se genera modificando solamente los datos de la plantilla Excel, conservando sus cuatro hojas, celdas, bordes, sello, colores y configuración de impresión. Selecciona una sola vez la plantilla original; queda guardada en este navegador y nunca se sube al repositorio público.</p><label class="btn secondary" style="cursor:pointer;display:inline-block">Seleccionar plantilla CMR original (.xlsx)<input id="cmrTemplateInput" type="file" accept=".xlsx" hidden></label> <span id="cmrTemplateStatus">Comprobando plantilla...</span>';
+let builtInTemplatePromise=null;
+async function getTemplate(){
+ if(!builtInTemplatePromise){
+  builtInTemplatePromise=(async()=>{
+   const response=await fetch('./cmr_exact_template.b64?v=20261004',{cache:'force-cache'});
+   if(!response.ok)throw Error('La plantilla Excel original no está disponible ('+response.status+')');
+   const encoded=(await response.text()).replace(/\s+/g,'');
+   if(!encoded.startsWith('UEsDB')||encoded.length!==145236)throw Error('Integridad de plantilla original no válida');
+   const decoded=atob(encoded),bytes=new Uint8Array(decoded.length);
+   for(let i=0;i<decoded.length;i++)bytes[i]=decoded.charCodeAt(i);
+   // The built-in template is the exact unchanged XLSX from the user, not an approximation.
+   return bytes.buffer;
+  })().catch(error=>{builtInTemplatePromise=null;throw error});
+ }
+ return builtInTemplatePromise;
+}
+const control=document.createElement('div');control.className='note';control.innerHTML='<strong>CMR Excel original integrado.</strong> No necesitas importar plantillas. El botón «CMR Excel exacto» descarga directamente el archivo original rellenado.';
 document.querySelector('#datos').prepend(control);
-getTemplate().then(x=>document.querySelector('#cmrTemplateStatus').textContent=x?'✓ Plantilla original guardada':'La plantilla se descargará automáticamente cuando esté integrada').catch(()=>document.querySelector('#cmrTemplateStatus').textContent='El almacenamiento local de plantilla no está disponible');
-document.querySelector('#cmrTemplateInput').addEventListener('change',async e=>{try{const f=e.target.files?.[0];if(!f)return;if(f.size>10000000)throw Error('Archivo demasiado grande');if(!window.JSZip)throw Error('No se ha cargado el lector XLSX');const bytes=await f.arrayBuffer();const zip=await JSZip.loadAsync(bytes);for(let i=1;i<=4;i++)if(!zip.file('xl/worksheets/sheet'+i+'.xml'))throw Error('La plantilla debe contener cuatro hojas originales');await storeTemplate(bytes);document.querySelector('#cmrTemplateStatus').textContent='✓ Plantilla original guardada';msg('CMR original listo para generar')}catch(err){msg(err.message||'No se pudo guardar la plantilla')}finally{e.target.value=''}});
+getTemplate().then(()=>msg('Plantilla Excel original preparada')).catch(e=>console.warn('No se pudo precargar la plantilla:',e));
 const XML_NS='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 function replaceCell(doc,reference,value){
  let cell=[...doc.getElementsByTagNameNS(XML_NS,'c')].find(el=>el.getAttribute('r')===reference);if(!cell)return;
@@ -17,7 +31,7 @@ function replaceCell(doc,reference,value){
  cell.setAttribute('t','inlineStr');const i=doc.createElementNS(XML_NS,'is'),t=doc.createElementNS(XML_NS,'t');t.setAttribute('xml:space','preserve');t.textContent=String(value??'');i.append(t);cell.append(i);
 }
 async function exactCMR(shipment){
- let bytes=await getTemplate();if(!bytes){try{const res=await fetch('./cmr_exact_template.xlsx',{cache:'no-store'});if(res.ok){bytes=await res.arrayBuffer();await storeTemplate(bytes)}}catch(e){console.warn('Plantilla integrada no disponible',e)}}if(!bytes){switchTab('datos');msg('Selecciona una vez el archivo cmr_exact_template.xlsx en Datos y copias');return}
+ const bytes=await getTemplate();
  if(!window.JSZip){msg('No se ha podido cargar el generador XLSX');return}
  const zip=await JSZip.loadAsync(bytes);const dt=shipment.date?new Date(shipment.date+'T12:00:00').toLocaleDateString('es-ES'):'';
  for(let i=1;i<=4;i++){
