@@ -32,6 +32,12 @@ jobs:
           test -s site/vendor/supabase.min.js
           test -s site/vendor/jszip.min.js
           test -s site/vendor/pdf-lib.min.js
+      - name: Verify generator source and original template assets
+        run: |
+          set -euo pipefail
+          for file in app.js quick.js sync.js cmr-exact.js cmr-pdf.js; do node --check "$file"; done
+          python3 -c 'import base64,zipfile,io; b=base64.b64decode(open("cmr_exact_template.b64").read()); z=zipfile.ZipFile(io.BytesIO(b)); assert z.testzip() is None; assert all("xl/worksheets/sheet%d.xml"%i in z.namelist() for i in range(1,5)); assert "xl/media/image1.png" in z.namelist(); print("Exact CMR XLSX: four worksheets and original stamp OK")'
+          python3 -c 'import base64; p=base64.b64decode(open("cmr_pdf_background.b64").read()); assert p.startswith(b"%PDF-"); print("PDF template header OK")'
       - uses: actions/upload-pages-artifact@v4
         with:
           path: site
