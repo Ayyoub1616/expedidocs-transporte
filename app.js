@@ -35,18 +35,18 @@ const cell=(label,value,cls='')=>'<div class="cell '+cls+'"><label>'+esc(label)+
 const docBox=(label,value,extra='')=>'<div class="cmr-box '+extra+'"><small>'+esc(label)+'</small><div class="cmr-value">'+esc(value||'—')+'</div></div>';
 function documentPage(d,copy,i){
 const dt=v=>v?new Date(v+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}):'—';
-const sender=[d.sender,d.senderTax?('CIF '+d.senderTax):'',d.senderAddress].filter(Boolean).join('\\n');
+const sender=[d.sender,d.senderTax?('CIF '+d.senderTax):'',d.senderAddress].filter(Boolean).join('\n');
 return '<article class="cmr-page"><h2>DOCUMENTO DE CONTROL DE TRANSPORTE DE MERCANCÍAS POR CARRETERA</h2>'+
 '<div class="cmr-main"><div class="cmr-left">'+
 docBox('1. Cargador o remitente (nombre o denominación social y domicilio)',sender,'tall')+
 docBox('1 bis. Expedidor, si no coincide con el cargador',d.dispatcher,'short')+
-docBox('2. Consignatario o destinatario (nombre y domicilio)',(d.consignee||d.destination)+'\\n'+d.address,'tall')+
+docBox('2. Consignatario o destinatario (nombre y domicilio)',(d.consignee||d.destination)+'\n'+d.address,'tall')+
 docBox('3. Lugar de destino de la expedición',d.destination,'short')+
-docBox('5. Fecha y lugar de origen de la expedición',dt(d.date)+' · '+(d.time||'')+'\\n'+d.origin,'short')+
+docBox('5. Fecha y lugar de origen de la expedición',dt(d.date)+' · '+(d.time||'')+'\n'+d.origin,'short')+
 '</div><div class="cmr-right">'+
 docBox('Información reglamentaria','Documento de control administrativo del transporte público de mercancías por carretera.','short')+
 docBox('18. Cargador contractual',sender,'tall')+
-docBox('19. Transportista efectivo',d.carrier+'\\n'+(d.carrierTax||''),'tall')+
+docBox('19. Transportista efectivo',d.carrier+'\n'+(d.carrierTax||''),'tall')+
 docBox('19 bis. Transportistas efectivos sucesivos','','short')+
 docBox('20. Reservas y observaciones',d.notes,'tall')+
 '</div></div>'+
@@ -55,7 +55,7 @@ docBox('6. Marcas o identificación de los bultos',d.goods)+docBox('7. Nº de bu
 '</div><table class="cmr-quantity"><tbody><tr><th>PALETS MADERA ENVIADOS</th><td>'+esc(d.packaging)+'</td></tr><tr><th>NÚMERO (BASES DE PALETS) ENVIADOS</th><td><strong>'+esc(d.pallets)+'</strong></td></tr><tr><th>NÚMERO DE BURRAS</th><td>'+esc(d.bars||0)+'</td></tr></tbody></table>'+
 '<div class="cmr-summary"><div>PALES <strong>'+esc(d.pallets)+'</strong></div><div>PESO CARGA <strong>'+esc(d.weight===''?'—':d.weight+' Kg.')+'</strong></div><div>PRECINTO <strong>'+esc(d.seal||'—')+'</strong></div></div></div>'+
 '<div><small>12 bis. Vehículo utilizado durante la operación de transporte</small><table class="cmr-vehicle"><tbody><tr><th>TRACTORA</th><th>REMOLQUE</th></tr><tr><td>'+esc(d.tractor)+'</td><td>'+esc(d.trailer)+'</td></tr><tr><th>NOMBRE</th><td>'+esc(d.driver)+'</td></tr><tr><th>DNI / NIE</th><td>'+esc(d.driverId)+'</td></tr><tr><th>TELÉFONO</th><td>'+esc(d.phone)+'</td></tr></tbody></table><div class="cmr-model"><strong>MODELO</strong><div>'+esc(d.model||'—')+'</div></div></div></div>'+
-'<div class="cmr-bottom"><div>'+docBox('Vehículo y precinto','TRACTORA: '+d.tractor+'  ·  REMOLQUE: '+d.trailer+'\\nPRECINTO: '+(d.seal||'—'))+docBox('13. Precio del transporte (si procede)','')+docBox('16. Referencia a contrato de transporte, si procede',d.ref)+'</div><div>'+docBox('DÍA DE DESCARGA',dt(d.unloadDate||d.date))+docBox('14. Instrucciones del cargador',d.notes)+docBox('15. Estipulaciones particulares de carga y descarga','')+'</div></div>'+
+'<div class="cmr-bottom"><div>'+docBox('Vehículo y precinto','TRACTORA: '+d.tractor+'  ·  REMOLQUE: '+d.trailer+'\nPRECINTO: '+(d.seal||'—'))+docBox('13. Precio del transporte (si procede)','')+docBox('16. Referencia a contrato de transporte, si procede',d.ref)+'</div><div>'+docBox('DÍA DE DESCARGA',dt(d.unloadDate||d.date))+docBox('14. Instrucciones del cargador',d.notes)+docBox('15. Estipulaciones particulares de carga y descarga','')+'</div></div>'+
 '<h3 class="cmr-copy">'+esc(i)+'.- EJEMPLAR PARA EL '+esc(copy.toUpperCase())+'</h3>'+
 '<div class="cmr-sign"><div>17. Firma y sello del cargador</div><div>18. Fecha y firma del transportista<br>'+esc(dt(d.date)+' '+(d.time||''))+'</div><div>21. Recibo de mercancía y firma/sello del consignatario<br>HORA LLEGADA: __________ <br>HORA SALIDA: __________</div></div>'+
 '<footer>Referencia: '+esc(d.ref)+' · '+esc(copy)+' · Copia '+i+' de 4. Documento generado desde ExpediDocs; comprobar los datos antes de su uso.</footer></article>';
